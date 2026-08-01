@@ -1,0 +1,424 @@
+{
+  "name": "Projeto envio de e-mail",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d710155e-041d-43f7-bcd2-9cc392b76131",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6xCEEVQPLWQuROXA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "24dbcce1-409b-4b5a-a630-5df9410cc658",
+              "leftValue": "=  {{ $json.from.value[0].address }}",
+              "rightValue": "yahoo.com.br",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "82aa8a2a-6666-4f73-aa9a-d4e2e0d6e69b",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Remetente: {{ $('Gmail Trigger').item.json.from }}\nAssunto: {{ $('Gmail Trigger').item.json.subject }}\nCorpo do e-mail: {{ $('Gmail Trigger').item.json.text }}",
+        "options": {
+          "systemMessage": "Você é um assistente pessoal altamente eficiente responsável por classificar e-mails recebidos.\n\nAnalise com atenção o assunto, o remetente e o corpo do e-mail fornecido e classifique a mensagem em apenas UMA das categorias abaixo:\n\n1. IMPORTANTE: E-mails sobre trabalho (Senior, DATAFRETE), faculdade (ADS), bancos, contas a pagar, comprovantes ou mensagens pessoais diretas.\n2. LIXEIRA: E-mails de promoções, ofertas, newsletters não solicitadas, anúncios, redes sociais, spams ou notificações automáticas irrelevantes.\n3. ARQUIVAR: Avisos gerais, informativos de sistemas que não exigem ação, ou e-mails de acompanhamento secundários.\n\nRegra de saída: Responda EXATAMENTE e APENAS com a palavra da categoria escolhida: IMPORTANTE, LIXEIRA ou ARQUIVAR. Não inclua pontos finais, justificativas ou qualquer outra palavra adicional na sua resposta."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        416,
+        -96
+      ],
+      "id": "512d26f4-d165-4472-a89b-5759b52a64bf",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        176
+      ],
+      "id": "82e92099-e6f3-4073-b463-9fcb91e4f610",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "QuYY4FZDSZ7uQMIQ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Gmail Trigger').item.json.threadId }}",
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        576,
+        176
+      ],
+      "id": "58e05754-71ec-4cfc-82e9-a0a28714eeee",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "LIXEIRA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7ff55c08-88ac-476f-a856-a214c3d0d7d0"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "LIXEIRA"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0b7957c1-66b5-4e38-82a1-e196aef6aa61",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "ARQUIVAR",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ARQUIVAR"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "195a89cd-ca41-4063-a46c-ae67d96f4c9c",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "IMPORTANTE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "IMPORTANTE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        -96
+      ],
+      "id": "434c8b50-8d6e-4fe4-8a2b-5e32a0844527",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "resource": "thread",
+        "operation": "trash",
+        "threadId": "={{ $('Gmail Trigger').item.json.threadId }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        976,
+        -208
+      ],
+      "id": "8be33276-aa94-4766-b5e9-325bb065d88c",
+      "name": "Trash a thread",
+      "webhookId": "2eec3c98-a12a-4765-9f65-d9e7ff153ace",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6xCEEVQPLWQuROXA",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "removeLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": [
+          "INBOX"
+        ]
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        48
+      ],
+      "id": "63574294-fcd8-4e0f-a844-21d231daa86a",
+      "name": "Remove label from message",
+      "webhookId": "746695e9-27ef-481a-b71d-3a04ca2f9798",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6xCEEVQPLWQuROXA",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Gmail Trigger": [
+      {
+        "json": {
+          "id": "19f86cb340fb7041",
+          "threadId": "19f86cb340fb7041",
+          "labelIds": [
+            "CATEGORY_PERSONAL",
+            "INBOX"
+          ],
+          "sizeEstimate": 8370,
+          "headers": {
+            "delivered-to": "Delivered-To: nanyhandball88@gmail.com",
+            "received": "Received: from sonic.gate.mail.ne1.yahoo.com by sonic311.consmr.mail.ne1.yahoo.com with HTTP; Tue, 21 Jul 2026 22:28:11 +0000",
+            "x-received": "X-Received: by 2002:a05:6820:f00c:b0:6a0:dbbc:e70d with SMTP id 006d021491bc7-6a5367e6538mr10237617eaf.32.1784672892076;\r\n        Tue, 21 Jul 2026 15:28:12 -0700 (PDT)",
+            "arc-seal": "ARC-Seal: i=1; a=rsa-sha256; t=1784672892; cv=none;\r\n        d=google.com; s=arc-20260327;\r\n        b=J1PI/ikh1WYIth35gUdA0iv6eK+OBdI77nmGvj2xJhw0yYVB3hloeNAKNeiHSNcGCz\r\n         hZaIt7emdHw9xrj0SpCMSknXRmLa0lAmjU7ROmGni+NoJb2iNcTdMreAyZbJftERLiAH\r\n         faJBlmrPjwpwPPImHrh6R7MXgjvh0ZXBgN1RRhqGHO69R6dvEIbwofREIR5wg0sYrSaf\r\n         8OtvtgoNszMbipnVmNtpgjkIyJeCkw6HtBeP1GOY/FDJCd9EvD1N16wzFOaiEQAzvKoH\r\n         LPtimwe1zO5h9Q58Ktcn7Q5sUWWEh+uwqxQvgSwMJBoorE3r69h57RAOyj6K/ragyvfH\r\n         0bDQ==",
+            "arc-message-signature": "ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20260327;\r\n        h=mime-version:subject:references:message-id:to:reply-to:from:date\r\n         :dkim-signature;\r\n        bh=wJ6KSPvJisIXFkqP4f6hhmkXU13XgIEPftzl0qxWzYU=;\r\n        fh=LE21Ow+ktc0iSCKRy1IECw63m4nOX/TspLfhgGyqJOc=;\r\n        b=Mu2lg3P0LHcPyHw6jqIQlxfPEeoSAVmX/P1/KXy4AohyrCQ5zTqvBNTA2j8rqTqqAM\r\n         iETvxUyLRzIKrsCjsT/U76oUSNWbkF5k/ub9xj6aU/b/YOAPHrlQ9r9/E+r0zb1SXfUE\r\n         8ZMwyIoxy9wgRgDjdlJzRg0KcIHsamGtCw/w1Vv1twkvBOi0mnrNU1Ka3qmvcn6zXg7f\r\n         XJsdKfG/3gzoSo3N6NevDic+PXnHZVEJ/zUALYd7+gNb94WXG+LA4LTwSO66Y6tHOky7\r\n         3N+McKKIt48+a4BJ2SewqqSzRmQFCxY1OI1x9+0yV8NHRXpVRb94P47GHIETw29SkrD6\r\n         3F+A==;\r\n        dara=google.com",
+            "arc-authentication-results": "ARC-Authentication-Results: i=1; mx.google.com;\r\n       dkim=pass header.i=@yahoo.com.br header.s=s2048 header.b=IMzIxP1E;\r\n       spf=pass (google.com: domain of elainehandball@yahoo.com.br designates 66.163.188.205 as permitted sender) smtp.mailfrom=elainehandball@yahoo.com.br;\r\n       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=yahoo.com.br",
+            "return-path": "Return-Path: <elainehandball@yahoo.com.br>",
+            "received-spf": "Received-SPF: pass (google.com: domain of elainehandball@yahoo.com.br designates 66.163.188.205 as permitted sender) client-ip=66.163.188.205;",
+            "authentication-results": "Authentication-Results: mx.google.com;\r\n       dkim=pass header.i=@yahoo.com.br header.s=s2048 header.b=IMzIxP1E;\r\n       spf=pass (google.com: domain of elainehandball@yahoo.com.br designates 66.163.188.205 as permitted sender) smtp.mailfrom=elainehandball@yahoo.com.br;\r\n       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=yahoo.com.br",
+            "dkim-signature": "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com.br; s=s2048; t=1784672891; bh=wJ6KSPvJisIXFkqP4f6hhmkXU13XgIEPftzl0qxWzYU=; h=Date:From:Reply-To:To:References:Subject:From:Subject:Reply-To; b=IMzIxP1EiHTinuuIkmTqK0nltIveVc4TNkxYHtrP1+RwGAAEMuncQeeeLxipyKUfHDUvNZjEGXGNcIDUxrlDn3BC2gn0OHbBy+vuKfY8LtXhsrdzr4dSoQtCOBPZ2eDE/vt+gdAY4SxNJKG3+S5wktJe/z3bXsL5wTWgiOxaoF86tMNWt6JGgNnz/FDTF2SYppB93TiHoWef72BKbek+LYWlhkmQLehwLSDbuiX99qI8vhL6Nz5HSwGNzMT9J9Z5+tRhp1Adfq57xpYy74X3EGMqf4aZE7G0G7lQD74lxV2TphZsuhFWtRyOuPSfmXiP7OAE6UIUqtcjrcVQQCAXgQ==",
+            "x-sonic-dkim-sign": "X-SONIC-DKIM-SIGN: v=1; a=rsa-sha256; c=relaxed/relaxed; d=yahoo.com; s=s2048; t=1784672891; bh=SrRTDpAPBER0qVprj4sl72+eYFTQYw31IWoNK0Iz3Ic=; h=X-Sonic-MF:Date:From:To:Subject:From:Subject; b=eEWk9nQZodslGNrCTeugN9NunLgejuj4egqzt/3t3t4k5eI/Jf7w0DR8UN/N1NlyenS+O/wF1O4TaSQ/35qrFIFWet7Mcho/QWBXLG5F3uuVAClKBHkqDtdP8OIiLmByLGe1TZZQbmjkr88/7ssqg2yRibvP++OeX8tpb3YPh3KGgkcZuQptAEcDNFUPLhgVbHCe79WNNI04iNBFaNtoZyPmiJeiHzXtd03y5b/e/LPsY9cndrCX3HhKZlMJ/dULBDjbwMDQXBjrN6vlkwccIU37HUq2wDOXdsbsiO55gvB/Q7t57cHf52lSLvVL65T+peaBpPiS3z+LcEmICQGBRA==",
+            "x-ymail-osg": "X-YMail-OSG: .Mvd9wAVM1l29MlDLbYUOSvUXRpQZ3LbzeT9S9HDp3vucbXITyUTRXHCGFn2_yF\r\n WZANOGmhkoXENKO5yS2uzDgiXluJzfTgvqVYlIEh9BevlO65mOnUEFaY1wrR9dg9104pJYhJ7cKK\r\n gjgWSA7Q2xKvaIGstqSw6n42EWCTuvsQN8QRmw79HoJb5Vmn.U0Ek4inRrRPeJJ2L6PHXJ5ui0w4\r\n WWulepHvuQ.Rfkh4IFbf5J.PmsqPjDQkY1GyilrSEBd1Mp03PEICUk5Vrz5IbH8OOk9DK3lRPrhX\r\n eJKETTyA40vkDwfgDzi97whC9PcWdlyf_UoxR5B0Xba9ev5bWvDdjlt2ev.RJUCcUSYfV23CHhe3\r\n Rp0k5v1FSTtbVzf8NgpvO8FzAf4cMJfDafNM7a3xOOrmlDQnzmy5aVxPmJ1GrTK5.4Hh3GKSgDPb\r\n KScr1Vss7EaRNLSxOljzrBFWDUtSSBWrDfv1NejcQx4fx3vxRPrNOHxJfTuvB6dxySEi_Llrk89I\r\n cbLaXDJAkzRY6XN4yYhJtCHTeNk0ql4lLizaTcR9SxNq2DJwoMin6ftx1T2bMO1Ji40qLKLjf0Hs\r\n 2mJ3c9f9FSMmXdcrEjv1oFT2X1SYvkeSEFthn3SrwAvTHH40CwZu0iEt6VlHbLduZlxGXMb4w5Qa\r\n oksW1.76SYMqHC5yKYzTU_T6t2iZLG1NJ8MoZrdcjHVK8B9AqzxZ6QIkhGznjzRoMINcVcfMeuHs\r\n ZB8YeV4l9acESLOr9_FML8SbR.0n10ih6AEDYGA0F4rs0o16WCb_prW8lkkx2vRPOGxKAPGzfuGI\r\n AeUtxH28K07B7sidnFJM15So.970xsilghhJ_L5tH1qGQoWhBTwbKBCIG8l.duKn_yKGPBvpwB54\r\n 6veveFqMUTTSZrgVMI4NEo0eW9W91_DckN0KcVLVDaToykAUW_1VPUlapdKfuttDBNX3S66AyN7d\r\n F_FNL4t0blxKYZFGm9hLcQo.vJrLn46IIc2SSVkN_SqMj.FuZDnLHWtJ7rNoRilyD9tC9Hik1akW\r\n blE8qUw6HLlCDImfwBfTRTMLdVMfDAe_8A__HZPTtmIiMyVFnFNgf7jNXxjv2hIDRq1hO2s1bPF.\r\n AMeMg_oOdX702MtrqR8cdoWVPtlLomJV4uXscoB6U3oYPmb_eL7O_WpVpolMvZFkEH2kGNUVgHFd\r\n qxTvLSi_aLojPGZ9smD3oKZfzEd6wt4q7U4nacZgUQOeDk6wzigXaH92PVLSatsE5l6bA.zVM36u\r\n mZI_V90g2mRjLtT9drKxY1e_SWjypHlPPnrBxByzAO6HSZ4tege.hmSlzJoZfb1MZu.5YoRzpMYt\r\n Ov6eAvktIQ8bjp3jFZLIrseTsC74voXU2b5u7YlLR.QOd.PKSKn7.5G0Y_daNn6k6oYC4Wq.54Ld\r\n pUI4.acUh8wiFGEkts62LkjGb66V1Eqjbph2pJpSrSr_FNKeOUa3ueKINoUVH10iFRMbrSEsuu.p\r\n bnrfNw1XP.1grgByLY7xTVlizVUMFAiCLPEWTXRlOak9Moo1xaSKEcAt0Hrv6aXjaxsYQsmoT2EN\r\n JND2ZpCFIeK_HaVFxDlOsMU4paKM9fKqBC1Ywnp_K6VxySnLmxQEJrRsUhAVcsgwXUcbO3D5p94D\r\n DBrXdnSDIcOeSbHl37rnf93ei8nDwCrXlo8n0yvT0XGALdPk489D_HVBSeflGFe19uw8F.QK5Od3\r\n MQmNKVgzaW3HtCwtMIDnuPJUPEwgkfFzeIdFbqvkNOrr39SiF802Jgf4_ePirLt6bRQkW_DKZ.iF\r\n ru6e2Vut5K5zXnTX.pyHyH.FK13pFSIN5hx3rJGfm9gBIWJFZM_oDtQ1ZzYk_4818QT8y5v68ZLF\r\n h.8JZavFXDcLYctTMNTXXX8_XVoPx._nTHeW3qeWrzO7erZU1tYUgdHVXi9kPVv17ZKICwrZm4Pj\r\n 2pPqFi5Pfffmv.prrIM8T261Xx1r_WPcXtPCEd_EWjR34AmfyHQ0_E.PgLUrMBQb.ZWDbV_ZEzrL\r\n DLu8B.kVJ2VVjMfffNc8DpaV2iP0BhO6KzCC_77sZyyq8oWvSnWoubtY8_DKZKh5oB0QFSSorz1E\r\n szwqr5ie1bKoP2GU0WAqYPjYWxDBWLKulu6DLhmg1iJvvnBTrxJca.ipvD135gLSL3tY8a0F6JUq\r\n W7ofTLL1N8ifvprnIkxHVNU8uqiquTkroAP6J9qfYr1gcIv8cb22TK8LG3SlHdcJI2V.RtZzmJG0\r\n FAaXynVDAYMuCE5r_D7rdyRKBY6GTEVZe1NwJcGtEgxmj3c4Mccnt4OaToNEg1KNGtmptkWQtvaM\r\n YQ5fbGP_0WKsX1qxBKIRd8o3xyugj9yF660vSIIF8nUl88bySdygFENGwgrD521Dx_GrRlMJTRnX\r\n UecoZlBre34Xpn.ea6N97B9TtqyLaZQ6m7VvVsr3oNfMG",
+            "x-sonic-mf": "X-Sonic-MF: <elainehandball@yahoo.com.br>",
+            "x-sonic-id": "X-Sonic-ID: 9725a8d5-ead4-4eb6-ad1a-8e7172d4c60d",
+            "date": "Date: Tue, 21 Jul 2026 22:28:02 +0000 (UTC)",
+            "from": "From: elaine souza <elainehandball@yahoo.com.br>",
+            "reply-to": "Reply-To: elaine souza <elainehandball@yahoo.com.br>",
+            "to": "To: Elaine Souza <nanyhandball88@gmail.com>",
+            "message-id": "Message-ID: <1741075158.1087538.1784672882589@mail.yahoo.com>",
+            "references": "References: <1741075158.1087538.1784672882589.ref@mail.yahoo.com>",
+            "subject": "Subject: Teste recebimento",
+            "mime-version": "MIME-Version: 1.0",
+            "content-type": "Content-Type: multipart/alternative; \r\n\tboundary=\"----=_Part_1087537_1078127380.1784672882588\"",
+            "x-mailer": "X-Mailer: WebService/1.1.26180 YahooMailAndroidMobile",
+            "content-length": "Content-Length: 1068"
+          },
+          "html": "Teste recebimento automação.<br><br><div id=\"ymail_android_signature\"><a id=\"ymail_android_signature_link\" href=\"https://mail.onelink.me/107872968?pid=nativeplacement&amp;c=US_Acquisition_YMktg_315_SearchOrgConquer_EmailSignature&amp;af_sub1=Acquisition&amp;af_sub2=US_YMktg&amp;af_sub3=&amp;af_sub4=100002039&amp;af_sub5=C01_Email_Static_&amp;af_ios_store_cpp=0c38e4b0-a27e-40f9-a211-f4e2de32ab91&amp;af_android_url=https://play.google.com/store/apps/details?id=com.yahoo.mobile.client.android.mail&amp;listing=search_organize_conquer\">Yahoo Mail: Pesquise, organize e aumente sua produtividade</a></div>",
+          "text": "Teste recebimento automação.\n\nYahoo Mail: Pesquise, organize e aumente sua produtividade",
+          "textAsHtml": "<p>Teste recebimento automa&ccedil;&atilde;o.</p><p>Yahoo Mail: Pesquise, organize e aumente sua produtividade</p>",
+          "subject": "Teste recebimento",
+          "references": "<1741075158.1087538.1784672882589.ref@mail.yahoo.com>",
+          "date": "2026-07-21T22:28:02.000Z",
+          "to": {
+            "value": [
+              {
+                "address": "nanyhandball88@gmail.com",
+                "name": "Elaine Souza"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Elaine Souza</span> &lt;<a href=\"mailto:nanyhandball88@gmail.com\" class=\"mp_address_email\">nanyhandball88@gmail.com</a>&gt;</span>",
+            "text": "\"Elaine Souza\" <nanyhandball88@gmail.com>"
+          },
+          "from": {
+            "value": [
+              {
+                "address": "elainehandball@yahoo.com.br",
+                "name": "elaine souza"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">elaine souza</span> &lt;<a href=\"mailto:elainehandball@yahoo.com.br\" class=\"mp_address_email\">elainehandball@yahoo.com.br</a>&gt;</span>",
+            "text": "\"elaine souza\" <elainehandball@yahoo.com.br>"
+          },
+          "messageId": "<1741075158.1087538.1784672882589@mail.yahoo.com>",
+          "replyTo": {
+            "value": [
+              {
+                "address": "elainehandball@yahoo.com.br",
+                "name": "elaine souza"
+              }
+            ],
+            "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">elaine souza</span> &lt;<a href=\"mailto:elainehandball@yahoo.com.br\" class=\"mp_address_email\">elainehandball@yahoo.com.br</a>&gt;</span>",
+            "text": "\"elaine souza\" <elainehandball@yahoo.com.br>"
+          }
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Trash a thread",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Remove label from message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a7ac515b-247f-4dab-9369-ffa018afded6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "83255dde3b6bb3374a76a4bb39c9a15e063b220574b76dcf49077e27b9900648"
+  },
+  "nodeGroups": [],
+  "id": "TW8oARbJQowe1HEB",
+  "tags": []
+}
